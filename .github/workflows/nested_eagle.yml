@@ -325,6 +325,20 @@ jobs:
           find ./global -name "*.png" -print -quit | grep -q . || { echo "Error: No global grid2grid verification plots found."; exit 1; }
           echo "Grid2grid verification completed."
 
+
+          # ---- Difference plots (grid2grid) ----
+          cd "${GITHUB_WORKSPACE}/nested_eagle/ursa/scientific_workflow/verification/grid2grid"
+          JOB_ID_DIFF=$(sbatch submit_diff_var_plots.sh | awk '{print $4}')
+          echo "Submitted diff-var plots job: $JOB_ID_DIFF (status: $(job_state "$JOB_ID_DIFF"))"
+
+          wait_terminal "$JOB_ID_DIFF" "DiffVarPlots"
+
+          # Confirm at least one difference PNG exists somewhere expected.
+          # If you know the exact directory, replace this with that specific path.
+          find ./lam -name "grid_stat_nested" -print -quit | grep -q . || { echo "Error: No difference PNG plots in lam found."; exit 1; }
+          find ./global -name "grid_stat_nested" -print -quit | grep -q . || { echo "Error: No difference PNG plots in global found."; exit 1; }
+          echo "Difference png plot are available!"
+
       - name: Remove label from pull request
         if: always()
         uses: mondeja/remove-labels-gh-action@v2.0.0

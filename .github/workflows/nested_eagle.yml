@@ -340,12 +340,12 @@ jobs:
           wait_terminal "$JOB_ID_DIFF" "DiffVarPlots"
 
           # Confirm difference PNGs exist (grid_stat_nested*.png) in both lam and global
-          if ! find ./lam -type f -name 'grid_stat_nested*.png' -print -quit | read -r _; then
+          if ! find wxvx_workdir/lam -type f -name 'grid_stat_nested*.png' -print -quit | read -r _; then
             echo "Error: No difference PNG plots in lam found (expected grid_stat_nested*.png)."
             exit 1
           fi
 
-          if ! find ./global -type f -name 'grid_stat_nested*.png' -print -quit | read -r _; then
+          if ! find wxvx_workdir/global -type f -name 'grid_stat_nested*.png' -print -quit | read -r _; then
             echo "Error: No difference PNG plots in global found (expected grid_stat_nested*.png)."
             exit 1
           fi

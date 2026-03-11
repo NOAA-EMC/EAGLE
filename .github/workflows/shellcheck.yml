@@ -20,7 +20,7 @@ jobs:
       - name: Set up ShellCheck
         uses: ludeeus/action-shellcheck@master
         with:
-          ignore_paths: ./global_eagle/**
+          ignore_paths: ./deprecated/**
 
       - name: Run ShellCheck
         run: |

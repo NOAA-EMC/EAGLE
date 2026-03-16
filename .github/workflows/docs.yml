@@ -10,7 +10,7 @@ on:
       - docs/*
     paths:
       - docs/**
-  pull_request_target:
+  pull_request:
     types: [opened, reopened, synchronize]
     paths:
       - docs/**

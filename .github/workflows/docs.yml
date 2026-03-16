@@ -7,10 +7,11 @@ on:
       - main/*
       - bugfix/*
       - release/*
+      - docs/*
     paths:
       - docs/**
   pull_request_target:
-    types: [issues, opened, reopened, synchronize]
+    types: [opened, reopened, synchronize]
     paths:
       - docs/**
 

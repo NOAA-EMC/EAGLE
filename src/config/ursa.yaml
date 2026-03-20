@@ -21,12 +21,12 @@ zarrs:
     execution:
       batchargs:
         cores: 1
-      mpicmd: srun --mpi=pmix
+      mpicmd: srun --mpi=none
   gfs:
     zarr:
       execution:
-        mpicmd: srun --mpi=pmix
+        mpicmd: srun --mpi=none
   hrrr:
     zarr:
       execution:
-        mpicmd: srun --mpi=pmix
+        mpicmd: srun --mpi=none

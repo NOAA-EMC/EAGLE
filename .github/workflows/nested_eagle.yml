@@ -18,7 +18,6 @@ jobs:
     name: Run Nested EAGLE end-to-end on Ursa
     if: >-
       ${{
-        !github.event.pull_request.draft &&
         contains(github.event.pull_request.labels.*.name, 'eagle-ursa') &&
         !contains(github.event.pull_request.labels.*.name, 'ci-running')
       }}

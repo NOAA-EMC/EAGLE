@@ -1,8 +1,8 @@
 name: Nested Eagle CI Pipeline (uwtools)
 
 on:
-  pull_request_review:
-    types: [submitted]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: nested-eagle-ci-${{ github.event.pull_request.number }}
@@ -18,7 +18,7 @@ jobs:
     name: Run Nested EAGLE end-to-end on Ursa
     if: >-
       ${{
-        github.event.review.state == 'approved' &&
+        !github.event.pull_request.draft &&
         !contains(github.event.pull_request.labels.*.name, 'ci-running')
       }}
     runs-on: ursa

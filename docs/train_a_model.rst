@@ -5,7 +5,7 @@ Train a Graph-Based Model
 anemoi-core Overview
 -------------------------
 
-Anemoi-core provides the infrastructure to train various types of (mostly grpah-based) ML models. It handles 
+Anemoi-core provides the infrastructure to train various types of (mostly graph-based) ML models. It handles 
 the entire training workflow so that users can focus on model detail choices instead of complicated orchestration. 
 Within the EAGLE repo, the anemoi-core packages are used to train various EAGLE ML models at scale.
 

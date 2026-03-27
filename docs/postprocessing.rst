@@ -6,7 +6,7 @@ eagle-tools Overview
 -------------------------
 
 We use the eagle-tools library for postprocessing inference and visualizing model performance. The eagle-tools library 
-provides command-line utilties that are all configured via YAML files.
+provides command-line utilities that are all configured via YAML files.
 
 This library currently supports:
 

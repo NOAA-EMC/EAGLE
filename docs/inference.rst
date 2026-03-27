@@ -28,4 +28,4 @@ anemoi-inference requires a YAML configuration to run via CLI. A simplified YAML
     # lots of output options (see anemoi-inference documentation)
     output: 2026=01-01T00.240hr.nc
 
-This simple setup will sucessfully execute inference.
+This simple setup will successfully execute inference.

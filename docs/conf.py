@@ -39,7 +39,19 @@ extensions = [
     "sphinxcontrib.bibtex",
 ]
 
-bibtex_bibfiles = []
+intersphinx_mapping = {
+    "uwtools": ("https://uwtools.readthedocs.io/en/stable/", None),
+    "anemoi-inference": (
+        "https://anemoi.readthedocs.io/projects/inference/en/latest/",
+        None,
+    ),
+    "anemoi-training": (
+        "https://anemoi.readthedocs.io/projects/training/en/latest/",
+        None,
+    ),
+    "met": ("https://metplus.readthedocs.io/projects/met/en/latest/", None),
+}
+intersphinx_disabled_domains = ["std"]
 
 templates_path = ["_templates"]
 
@@ -48,40 +60,8 @@ source_suffix = ".rst"
 master_doc = "index"
 
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
-
-# Documentation-wide substitutions
-rst_prolog = """
-.. |branch| replace:: ``main``
-"""
-
-
-# -- Options for intersphinx extension ---------------------------------------
-
-intersphinx_mapping = {
-    "uwtools": ("https://uwtools.readthedocs.io/en/stable/", None),
-    "anemoi-inference": ("https://anemoi.readthedocs.io/projects/inference/en/latest/", None),
-    "anemoi-training": ("https://anemoi.readthedocs.io/projects/training/en/latest/", None),
-    "met": ("https://metplus.readthedocs.io/projects/met/en/latest/", None),
-}
-
-
-# -- Options for extlinks extension ------------------------------------------
-
-extlinks_detect_hardcoded_links = True
-extlinks = {
-    "ufs2arco": ("https://ufs2arco.readthedocs.io/en/latest/%s", "%s"),
-}
-
-
-# -- Linkcheck options -------------------------------------------------------
-
-# Retry failed links before reporting broken (handles transient errors)
-linkcheck_retries = 3
-
-# Ignore links that return 403 or are otherwise known to be flaky
-linkcheck_ignore = []
-
-
+bibtex_bibfiles: list[str] = []
+linkcheck_ignore: list[str] = []
 # -- Options for HTML output -------------------------------------------------
 
 html_theme = "sphinx_rtd_theme"

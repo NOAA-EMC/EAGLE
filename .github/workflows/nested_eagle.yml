@@ -1,4 +1,4 @@
-name: Nested Eagle CI Pipeline (uwtools)
+name: Nested EAGLE CI Pipeline (uwtools)
 
 on:
   pull_request:
@@ -14,6 +14,21 @@ permissions:
   issues: write
 
 jobs:
+  cleanup:
+    name: Clean old conda installs
+    if: >-
+      ${{
+        contains(github.event.pull_request.labels.*.name, 'eagle-ursa') &&
+        !contains(github.event.pull_request.labels.*.name, 'ci-running')
+      }}
+    runs-on: ursa
+    steps:
+      - name: Clean old conda installs
+        run: |
+          find $GITHUB_WORKSPACE/src -mindepth 1 -maxdepth 1 -regex "^.*/conda\.[0-9]+$" | sort | while read x; do
+            echo Removing $x
+            rm -rf $x
+          done
   run_pipeline:
     name: Run Nested EAGLE end-to-end on Ursa
     if: >-
@@ -27,11 +42,16 @@ jobs:
       name: eagle-ursa
 
     steps:
-      - name: Perform cleanup and preserve conda directory 
+      - name: Perform cleanup
         run: |
           set -euo pipefail
-          cd ${GITHUB_WORKSPACE}
-          git clean -ffdx -e conda
+          cd $GITHUB_WORKSPACE
+          echo Running in $PWD
+          conda=src/conda
+          if [[ -d $conda ]]; then
+            mv -v $conda $conda.$(date +%s)
+          fi
+          git clean -ffdx -e "conda.*"
         
       - name: Checkout PR head
         uses: actions/checkout@v4
@@ -41,7 +61,7 @@ jobs:
           fetch-depth: 0
           clean: false 
 
-      - name: Gate on nested_eagle/ or src/ changes
+      - name: Gate on src/ changes
         id: gate
         uses: actions/github-script@v7
         with:
@@ -61,9 +81,7 @@ jobs:
               page += 1;
             }
 
-            const relevant = files.some(
-              f => f.startsWith("nested_eagle/") || f.startsWith("src/")
-            );
+            const relevant = files.some(f => f.startsWith("src/"));
             core.info(`Changed files: ${files.length}`);
             core.info(`Relevant changes: ${relevant}`);
             core.setOutput("relevant", relevant ? "true" : "false");
@@ -91,28 +109,7 @@ jobs:
           export SETVARS_CALL=${SETVARS_CALL:-0}
           cd "${GITHUB_WORKSPACE}/src"
 
-          TRASH_BASE="/scratch4/NAGAPE/epic/role-epic/eagle-conda-trash"
-
-          echo "Disk before cleanup:"
-          df -h .
-
-          if [ -d "${TRASH_BASE}" ]; then
-            echo "Removing all stashed conda dirs from ${TRASH_BASE}"
-            rm -rf "${TRASH_BASE}"/*
-          fi
-
-          if [ -e "${INSTALLDIR}" ] && [ ! -f "${INSTALLDIR}/etc/profile.d/conda.sh" ]; then
-            echo "Removing stale/incomplete conda install at ${INSTALLDIR}"
-            rm -rf "${INSTALLDIR}"
-          fi
-
-          echo "Removing old run directories under src/run"
-          rm -rf "${GITHUB_WORKSPACE}/src/run"/ci-pr* || true
-
-          echo "Disk after cleanup:"
-          df -h .
-
-          make devenv cudascript=ursa INSTALLDIR="${INSTALLDIR}"
+          make env cudascript=ursa INSTALLDIR="${INSTALLDIR}"
 
           source conda/etc/profile.d/conda.sh
           conda activate base

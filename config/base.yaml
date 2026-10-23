@@ -1,0 +1,412 @@
+# This is the base EAGLE config.
+
+# yamllint disable rule:anchors rule:line-length
+
+app:
+  base: /path/to/eagle
+  experiment_name: default
+  gpu: # set by platform config
+  partitions: # set by platform config
+  platform: # set by platform config
+  rundir: '{{ app.base }}/run/{{ app.experiment_name }}'
+  time:
+    freq: '{{ (app.time.step.total_seconds() / 3600) | int }}h'
+    inference_start: !datetime 2022-02-03T12
+    inference_stop: !datetime '{{ app.time.inference_start }}'
+    max_leadtime: 24
+    multistep_input: 1
+    start: !datetime 2022-02-01T00
+    step: !timedelta 6
+    stop: !datetime 2022-02-05T12
+grids_and_meshes:
+  filenames:
+    gfs_target_grid: '{{ val.filenames.gfs_target_grid }}'
+  rundir: '{{ val.data.rundir }}'
+  global_grid_resolution_deg: 1.0
+inference:
+  anemoi:
+    checkpoint_path: /path/to/checkpoint # NB: If a value for inference.checkpoint_dir is provided, it will override this value with the latest checkpoint in that directory.
+    end_date: !datetime '{{ app.time.inference_stop }}'
+    freq: '{{ app.time.freq }}'
+    lead_time: !int '{{ app.time.max_leadtime }}'
+    output_path: '{{ inference.rundir }}/output'
+    start_date: !datetime '{{ app.time.inference_start }}'
+    use_mpi: true
+  checkpoint_dir: '{{ training.rundir }}/outputs/checkpoint'
+  execution:
+    batchargs:
+      <<: *gpu-batchargs
+      export: false
+      memory: 16G
+      rundir: '{{ inference.rundir }}'
+      walltime: '00:10:00'
+    envcmds: !list '{{ val.inference.envcmds }}'
+    executable: '{{ app.launcher | default("") }} eagle-tools inference inference.yaml'
+  rundir: '{{ app.rundir }}/inference'
+  validate: true
+platform: !dict '{{ app.platform }}'
+training:
+  anemoi:
+    defaults:
+      - data: zarr
+      - dataloader: native_grid
+      - diagnostics: evaluation
+      - graph: encoder_decoder_only
+      - model: transformer
+      - system: slurm
+      - task: forecaster
+      - training: stretched
+      - _self_
+  execution:
+    batchargs:
+      <<: *gpu-batchargs
+      export: false
+      memory: 128G
+      rundir: '{{ training.rundir }}'
+      walltime: '01:00:00'
+    envcmds: !list '{{ val.training.envcmds }}'
+    executable: '{{ app.launcher | default("") }} anemoi-training train --config-name=training'
+  remove:
+    # Dot-separated config keys paths to delete from the composed runtime config.
+    - graph.nodes.hidden.node_builder.grid
+  rundir: '{{ app.rundir }}/training'
+ufs2arco:
+  dirs:
+    cache: cache/X
+    logs: logs/X
+    zarr: X.zarr
+  mover:
+    name: mpidatamover
+  regridder:
+    method: conservative
+    reuse_weights: True
+  slices:
+    sel:
+      latitude: [89.9, -89.9]
+  source:
+    analysis:
+      fhr:
+        start: 0
+        step: !int '{{ val.step }}'
+        end: 0
+      levels: !list '{{ val.levels }}'
+      t0:
+        start: '{{ (app.time.start + app.time.step).strftime("%Y-%m-%dT%H") }}'
+        freq: '{{ val.step }}h'
+        end: '{{ (app.time.stop + app.time.step).strftime("%Y-%m-%dT%H") }}'
+      variables: !list '{{ val.variables.analysis }}'
+    forecast:
+      fhr:
+        start: 6
+        step: !int '{{ val.step }}'
+        end: 6
+      t0:
+        start: '{{ app.time.start.strftime("%Y-%m-%dT%H") }}'
+        freq: '{{ val.step }}h'
+        end: '{{ app.time.stop.strftime("%Y-%m-%dT%H") }}'
+      variables: !list '{{ val.variables.forecast }}'
+  target:
+    chunks:
+      cell: -1
+      ensemble: 1
+      time: 1
+      variable: -1
+    compute_temporal_residual_statistics: True
+    forcings:
+      - cos_latitude
+      - sin_latitude
+      - cos_longitude
+      - sin_longitude
+      - cos_julian_day
+      - sin_julian_day
+      - cos_local_time
+      - sin_local_time
+      - insolation
+    name: anemoi
+    sort_channels_by_levels: True
+    statistics_period:
+      start: '{{ ufs2arco.source.analysis.t0.start }}'
+      end: '{{ (app.time.start + app.time.step + val.statsdelta.aligned).strftime("%Y-%m-%dT%H") }}'
+val:
+  conda: '{{ app.base }}/conda'
+  data:
+    rundir: '{{ app.rundir }}/data'
+  filenames:
+    gfs_target_grid: global_one_degree.nc
+  inference:
+    envcmds:
+      - source {{ val.conda }}/etc/profile.d/conda.sh
+      - conda activate anemoi
+      - set -ex
+  levels: [100, 150, 200, 250, 300, 400, 500, 600, 700, 850, 925, 1000]
+  statsdelta:
+    aligned: !timedelta '{{ (val.statsdelta.raw - val.statsdelta.raw % app.time.step).total_seconds() / 3600 }}'
+    raw: !timedelta '{{ ((app.time.stop - app.time.start) * 0.8).total_seconds() / 3600 }}'
+  step: !int '{{ (app.time.step.total_seconds() / 3600) | int }}'
+  training:
+    envcmds:
+      - source {{ val.conda }}/etc/profile.d/conda.sh
+      - conda activate anemoi
+      - export MLFLOW_ALLOW_FILE_STORE=true
+      - export SLURM_GPUS_PER_NODE=1
+      - export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+      - set -ex
+  variables:
+    analysis:
+      # 3D Prognostic
+      - gh
+      - u
+      - v
+      - w
+      - t
+      - q
+      # 2D Prognostic
+      - sp
+      - u10
+      - v10
+      - t2m
+      - t_surface
+      - sh2
+      # Diagnostic
+      - u80
+      - v80
+      # Forcing
+      - lsm
+      - orog
+    forecast:
+      # Diagnostic
+      - accum_tp
+  visualization:
+    rundir: '{{ app.rundir }}/visualization'
+  vx:
+    rundir: '{{ app.rundir }}/vx'
+  zarrs:
+    envcmds:
+      - source {{ val.conda }}/etc/profile.d/conda.sh
+      - conda activate data
+      - set -ex
+visualization:
+  common:
+    postwxvx: &postwxvx-common
+      start_date: !datetime '{{ app.time.inference_start }}'
+      end_date: !datetime '{{ app.time.inference_stop }}'
+      freq: '{{ app.time.freq }}'
+      leadtimes:
+        start: !int '{{ val.step }}'
+        end: !int '{{ app.time.max_leadtime }}'
+        step: !int '{{ val.step }}'
+      variable_prefixes: # These names are from the wxvx output.
+        - 2t_heightAboveGround_0002
+        - 10u_heightAboveGround_0010
+        - 10v_heightAboveGround_0010
+        - gh_isobaricInhPa_0500
+        - t_isobaricInhPa_0850
+        - u_isobaricInhPa_0250
+        - v_isobaricInhPa_0250
+        - sp_surface
+    spatial_stat_plots:
+      add_states: false
+      cmap: RdBu_r
+      figsize: {h: 9.75, w: 4.875}
+      file_fontsize: 8.0
+      gridlines: false
+      stats_root: '{{ val.vx.rundir }}/grid2grid/%s/run/stats'
+      suptitle_y: 0.995
+      title_fontsize: 11.0
+    stats:
+      - RMSE
+    variables: # These names are from the postwxvx output.
+      - 2m_temperature
+      - 10m_zonal_wind
+      - 10m_meridional_wind
+      - 500hpa_geopotential_height
+      - 850hpa_temperature
+      - 250hpa_zonal_wind
+      - 250hpa_meridional_wind
+      - surface_pressure
+  grid2grid:
+    global:
+      visualization:
+        eagle_tools:
+          <<: *postwxvx-common
+          work_path: '{{ val.vx.rundir }}/grid2grid/global'
+        name: grid-global
+        rundir: '{{ val.visualization.rundir }}/grid2grid/global'
+        spatial_stat_plots: !dict '{{ visualization.common.spatial_stat_plots }}'
+        stats: !list '{{ visualization.common.stats }}'
+        variables: !list '{{ visualization.common.variables }}'
+  grid2obs:
+    global:
+      visualization:
+        eagle_tools:
+          <<: *postwxvx-common
+          work_path: '{{ val.vx.rundir }}/grid2obs/global/'
+        name: obs-global
+        rundir: '{{ val.visualization.rundir }}/grid2obs/global'
+        stats: !list '{{ visualization.common.stats }}'
+        variables: !list '{{ visualization.common.variables }}'
+vx:
+  common:
+    execution:
+      batchargs: &wxvx-common-batchargs
+        cores: 1
+        export: false
+        partition: '{{ app.partitions.netaccess }}'
+        walltime: '00:30:00'
+      envcmds:
+        - source {{ val.conda }}/etc/profile.d/conda.sh
+        - conda activate wxvx
+        - set -ex
+    paths_grid:
+      grids:
+        forecast: '{{ val.vx.rundir }}/TRUTH/EXTENT/grids/forecast'
+        truth: '{{ val.vx.rundir }}/TRUTH/EXTENT/grids/truth'
+      run: '{{ val.vx.rundir }}/TRUTH/EXTENT/run'
+    paths_obs:
+      grids:
+        forecast: '{{ val.vx.rundir }}/TRUTH/EXTENT/forecast'
+      obs: '{{ val.vx.rundir }}/TRUTH/EXTENT/obs'
+      run: '{{ val.vx.rundir }}/TRUTH/EXTENT/run'
+    wxvx: &wxvx-common
+      cycles:
+        start: !datetime '{{ app.time.inference_start }}'
+        step: 0
+        stop: !datetime '{{ app.time.inference_stop }}'
+      forecast:
+        coords:
+          latitude: latitude
+          level: level
+          longitude: longitude
+          time:
+            inittime: forecast_reference_time
+            validtime: time
+      leadtimes:
+        start: '{{ app.time.step }}'
+        step: '{{ app.time.step }}'
+        stop: '{{ app.time.max_leadtime }}'
+      meta:
+        workdir: '{{ val.vx.rundir }}/TRUTH/EXTENT'
+        grids: '{{ val.vx.rundir }}/TRUTH/EXTENT/grids'
+        max_leadtime: !int '{{ app.time.max_leadtime }}'
+        post_files: '{{ val.vx.rundir }}/postprocessed_files/EXTENT'
+      variables:
+        t2m:
+          level_type: heightAboveGround
+          levels: [2]
+          name: 2t
+        gh:
+          level_type: isobaricInhPa
+          levels: [500]
+          name: gh
+        sp:
+          level_type: surface
+          name: sp
+        t:
+          level_type: isobaricInhPa
+          levels: [850]
+          name: t
+        u:
+          level_type: isobaricInhPa
+          levels: [250]
+          name: u
+        u10:
+          level_type: heightAboveGround
+          levels: [10]
+          name: 10u
+        v:
+          level_type: isobaricInhPa
+          levels: [250]
+          name: v
+        v10:
+          level_type: heightAboveGround
+          levels: [10]
+          name: 10v
+  grid2grid:
+    global:
+      platform: !dict '{{ app.platform }}'
+      wxvx: # config for the EAGLE driver
+        execution:
+          batchargs:
+            <<: *wxvx-common-batchargs
+            rundir: '{{ vx.grid2grid.global.wxvx.rundir }}'
+          envcmds: !list '{{ vx.common.execution.envcmds }}'
+          executable: wxvx -c wxvx-grid2grid-global.yaml -t plots -f
+        name: grid2grid-global
+        prewxvx: !dict '{{ prewxvx.global.prewxvx }}'
+        rundir: '{{ val.vx.rundir }}/grid2grid/global'
+        wxvx: # config for the wxvx application
+          <<: *wxvx-common
+          truth:
+            name: GFS
+            type: grid
+            url: https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs.{{ yyyymmdd }}/{{ hh }}/atmos/gfs.t{{ hh }}z.pgrb2.0p25.f{{ "%03d" % fh }}
+          forecast:
+            coords: !dict '{{ vx.common.wxvx.forecast.coords }}'
+            # NB: Retain relative 'meta.post_files' reference in 'path' value!
+            projection:
+              proj: latlon
+          ncdiffs: true
+          regrid:
+            method: NEAREST
+            to: forecast
+  grid2obs:
+    global:
+      platform: !dict '{{ app.platform }}'
+      wxvx: # config for the EAGLE driver
+        execution:
+          batchargs:
+            <<: *wxvx-common-batchargs
+            rundir: '{{ vx.grid2obs.global.wxvx.rundir }}'
+          envcmds: !list '{{ vx.common.execution.envcmds }}'
+          executable: wxvx -c wxvx-grid2obs-global.yaml -t plots -f
+        name: grid2obs-global
+        prewxvx: !dict '{{ prewxvx.global.prewxvx }}'
+        rundir: '{{ val.vx.rundir }}/grid2obs/global'
+        wxvx: # config for the wxvx application
+          <<: *wxvx-common
+          truth:
+            name: PREPBUFR
+            type: point
+            url: https://noaa-reanalyses-pds.s3.amazonaws.com/observations/reanalysis/conv/prepbufr/{{ yyyymmdd[:4] }}/{{ yyyymmdd[4:6] }}/prepbufr/gdas.{{ yyyymmdd }}.t{{ hh }}z.prepbufr.nr
+          forecast:
+            coords: !dict '{{ vx.common.wxvx.forecast.coords }}'
+            name: '{{ vx.grid2grid.global.wxvx.wxvx.forecast.name }}'
+            # NB: Retain relative 'meta.post_files' reference in 'path' value!
+            projection: !dict '{{ vx.grid2grid.global.wxvx.wxvx.forecast.projection }}'
+          regrid:
+            method: BILIN
+            to: G104
+zarrs:
+  common:
+    execution:
+      batchargs:
+        cores: 4
+        export: false
+        partition: '{{ app.partitions.netaccess }}'
+        rundir: '{{ val.data.rundir }}'
+        walltime: '00:10:00'
+      envcmds: !list '{{ val.zarrs.envcmds }}'
+      mpiargs: []
+      mpicmd: '{{ "srun" if app.platform.scheduler == "slurm" else "mpiexec" }}'
+  gfs:
+    zarr:
+      execution:
+        batchargs: !dict '{{ zarrs.common.execution.batchargs }}'
+        envcmds: !list '{{ zarrs.common.execution.envcmds }}'
+        executable: ufs2arco ufs2arco-gfs.yaml --overwrite
+        mpiargs: !list '{{ zarrs.common.execution.mpiargs }}'
+        mpicmd: '{{ zarrs.common.execution.mpicmd }}'
+      name: gfs
+      rundir: '{{ val.data.rundir }}'
+      ufs2arco:
+        directories: !dict '{{ ufs2arco.dirs | replace("X", "gfs") }}'
+        mover: !dict '{{ ufs2arco.mover }}'
+        multisource:
+          - source: !dict '{{ dict(ufs2arco.source.analysis, name="gfs_archive", slices=ufs2arco.slices) }}'
+          - source: !dict '{{ dict(ufs2arco.source.forecast, name="gfs_archive", slices=ufs2arco.slices) }}'
+        target: !dict '{{ ufs2arco.target }}'
+        transforms:
+          horizontal_regrid:
+            regridder_kwargs: !dict '{{ dict(ufs2arco.regridder, filename="conservative_weights_gfs.nc") }}'
+            target_grid_path: '{{ val.data.rundir}}/{{ val.filenames.gfs_target_grid }}'
+    platform: !dict '{{ app.platform }}'

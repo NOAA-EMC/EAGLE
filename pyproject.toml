@@ -1,0 +1,57 @@
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = true
+
+[tool.coverage.run]
+branch = true
+
+[tool.mypy]
+check_untyped_defs = true
+pretty = true
+warn_return_any = true
+
+[tool.pytest.ini_options]
+filterwarnings = [
+  "ignore:Tight layout not applied:UserWarning", # from matplotlib
+  "ignore:jsonschema.RefResolver is deprecated:DeprecationWarning", # from uwtools
+  "ignore:numpy.ndarray size changed:RuntimeWarning",  # from numpy
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "ANN001",  # missing-type-function-argument
+  "ANN201",  # missing-return-type-undocumented-public-function
+  "ANN202",  # missing-return-type-private-function
+  "COM812",  # missing-trailing-comma
+  "D100",    # undocumented-public-module
+  "D102",    # undocumented-public-method
+  "D103",    # undocumented-public-function
+  "D104",    # undocumented-public-package
+  "D200",    # unnecessary-multiline-docstring
+  "D203",    # incorrect-blank-line-before-class
+  "D205",    # missing-blank-line-after-summary
+  "D212",    # multi-line-summary-first-line
+  "D401",    # non-imperative-mood
+  "D403",    # first-word-uncapitalized
+  "E731",    # lambda-assignment
+  "LOG015",  # root-logger-call
+  "PLR0913", # too-many-arguments
+  "PLR2004", # magic-value-comparison
+  "S101",    # assert
+  "S602",    # subprocess-popen-with-shell-equals-true
+  "UP031",   # printf-string-formatting
+]
+
+[tool.ruff.lint.per-file-ignores]
+"{conftest.py,**/*_test.py}" = [
+  "ANN002",  # missing-type-args
+  "ANN003",  # missing-type-kwargs
+  "ANN401",  # any-type
+  "PT013",   # pytest-incorrect-pytest-import
+  "SLF001",  # private-member-access
+]

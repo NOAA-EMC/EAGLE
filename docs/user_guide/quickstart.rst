@@ -4,14 +4,28 @@
 Quickstart Guide
 ====================
 
-This section provides a recipe for an end-to-end run of nested-EAGLE on :term:`Ursa`. At present, Ursa is the only supported 
-platform. Future development will include additional platforms.
+This section provides a recipe for an end-to-end run of nested- and global-EAGLE on :term:`Ursa`. 
+To run a global configuration with this quickstart guide, replace references to ``nested`` with 
+``global``. At present, Ursa is the only supported 
+platform to run the entire quickstart guide from preprocessing, training and inference, to verification 
+and visualization. Users with access to Microsoft Azure should follow the
+:doc:`../eagle_models/nested_eagle` documentation for the near-real time pipeline. Future development will include additional platforms.
 
 .. note::
 
    GNU ``make`` version 3.82 or higher is required.
 
-**Complete the following steps from the** ``src/`` **directory.**
+.. note:: The EAGLE runtime software environment currently requires over 50 GB of disk space. Consider available space, quota, etc. when choosing where to clone the EAGLE repository and run the following steps.
+
+If you do not already have the repository, clone it and change into the
+repository root:
+
+.. code-block:: bash
+
+   git clone https://github.com/NOAA-EPIC/EAGLE.git
+   cd EAGLE
+
+**Complete the following steps from the repository root.**
 
 .. _QuickstartWorkflow:
 
@@ -30,18 +44,28 @@ Building and Running :term:`EAGLE`
 
    Developers who will be modifying Python driver code should replace ``make env`` with ``make devenv``, which will 
    create the same environments but also install additional code-quality tools for formatting, linting, shellchecking, 
-   typechecking, and :term:`YAML` linting.
+   typechecking, unit testing, and :term:`YAML` linting.
+
+   .. note::
+
+      EAGLE virtual environments are built using both conda and pip packages. If you examine the output from the ``make env`` command above, you may see messages like the following, from pip:
+
+      .. code-block:: text
+
+         ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+
+      This will be followed by a report of packages pip believes are not installed or are installed with incompatible versions. These messages are due to fundamental differences in how conda and pip operate, and are generally safe to ignore. But please open an :ref:`Issue <Issues>` if you later encounter problems you believe are related to package versions.
 
 #. Create the EAGLE YAML config
 
    .. code-block:: bash
 
-      make config compose=base:ursa >eagle.yaml
+      make config compose=base:nested:ursa >eagle.yaml
 
-   The ``config`` target operates on ``.yaml`` files in the ``config/`` directory, so this command composes ``config/base.yaml`` 
+   The ``config`` target operates on ``.yaml`` files in the ``config/`` directory, so this command composes ``config/base.yaml``, ``config/nested.yaml``, 
    and ``config/ursa.yaml`` and redirects the composed config into ``eagle.yaml``.
 
-#. Set the ``app.base`` value in ``eagle.yaml`` to the absolute path to the current ``src/`` directory.
+#. Set the ``app.base`` value in ``eagle.yaml`` to the absolute path to the current (repository root) directory.
 
    The run directories from subsequent steps, along with the output of those steps, will be created in the ``run/<expname>`` 
    subdirectory of ``app.base``, where ``<expname>`` is the value of ``app.experiment_name``.
@@ -75,16 +99,6 @@ Building and Running :term:`EAGLE`
    This step performs inference, producing a forecast. It submits a batch job. Do not proceed until the batch job 
    completes successfully (see the file ``run/<expname>/inference/runscript.inference.out``.)
 
-#. Postprocess model output
-
-   .. code-block:: bash
-      
-      make prewxvx-global config=eagle.yaml
-      make prewxvx-lam config=eagle.yaml
-
-   These :term:`PreWXVX` steps prepare forecast output from the previous step for verification by :term:`wxvx`. They run locally, so it is 
-   safe to proceed when the commands return. See the files ``run/<expname>/vx/prewxvx/{global,lam}/runscript.prewxvx-*.out`` for details.
-
 #. Model verification
 
    .. _QuickstartVerification:
@@ -96,6 +110,10 @@ Building and Running :term:`EAGLE`
       make vx-obs-global config=eagle.yaml
       make vx-obs-lam config=eagle.yaml
 
+   For running just the global verification run, only submit ``vx-grid-global`` and ``vx-obs-global``.
+
+   Before running verification, the :term:`WXVX` driver will run ``prewxvx`` to prepare forecast output from the previous step. See the files ``run/<expname>/vx/prewxvx/{global,lam}/runscript.prewxvx-*.out`` for details.
+   
    These steps perform verification of the ``global`` or :term:`LAM` forecasts against gridded analyses (``*-grid-*``) or 
    PrepBUFR observations (``*-obs-*``) as truth. Each submits a batch job, so the four ``make`` commands can be run in quick 
    succession to get all the batch jobs running in parallel. When each batch job completes, MET ``.stat`` files and ``.png`` 
@@ -111,6 +129,67 @@ Building and Running :term:`EAGLE`
       make vis-obs-global config=eagle.yaml
       make vis-obs-lam config=eagle.yaml
 
+   For running just the global visualization run, only submit ``vis-grid-global`` and ``vis-obs-global``.
+
    These steps will first call ``eagle-tools``'s ``postwxvx`` tool to create and save a series of netCDF files with all relevant statistics in the corresponding ``wxvx`` directory for each variable. It will then create a series of basic plots (provided by `DataArray.plot() <https://docs.xarray.dev/en/latest/generated/xarray.DataArray.plot.html#xarray.DataArray.plot>`_ from the ``xarray`` library) in the ``run/<expname>/visualization/grid2{grid,obs}/{global,lam}/plots-basic`` directory.
 
    For the grid-based ``vis-grid-global`` and ``vis-grid-lam`` targets, additional error plots (forecast vs truth differences) will be created under ``run/<expname>/visualization/grid2grid/{global,lam}/plots-spatial-stats/``. These plots depend on 1. The config value at key-path ``vx.grid2grid.{global,lam}.wxvx.wxvx.ncdiffs`` being set to ``true``, which instructs MET to produce netCDF difference files during verification; and 2. The config block at key-path ``visualization.grid2grid.{global,lam}.visualization.spatial_stat_plots``, which enables and configures plot generation, being present.
+
+#. .. _NRT:
+
+   Run inference in near-real-time (NRT)
+
+   a. Create the EAGLE NRT config 
+   
+   .. code-block:: bash
+
+      make config compose=base:nested:ursa:nrt-nested > nrt-composed.yaml
+
+   b. Set the ``app.base`` value in ``nrt-composed.yaml`` to the absolute path to the current (repository root) directory.
+
+   This should match the path used when generating the main EAGLE config above.
+   
+   Two additional paths may require attention:
+      - inference.anemoi.checkpoint_dir
+      - grids_and_meshes.rundir
+
+   If you are following only the quickstart workflow, you do not need to modify these values. The config automatically pulls both paths from 
+   the quickstart run. However, if you ran multiple experiments or stored outputs in a different location, update these paths so they point 
+   to the correct directories.
+
+   c. Realize the EAGLE NRT config
+
+   .. code-block:: bash
+   
+      make realize config=nrt-composed.yaml > nrt.yaml
+
+   This creates the final config to begin a NRT run. It is required because it freezes the ``NOW`` environment 
+   variable across the entire configuration. Since jobs may be submitted at different times, this ensures a 
+   consistent timestamp is used throughout the run.
+   
+   d. Load current initial conditions
+   
+   .. code-block:: bash
+      
+      make data config=nrt.yaml
+
+   e. Run inference
+
+   .. code-block:: bash
+      
+      make inference config=nrt.yaml
+
+   Your forecast will save to ``path/to/eagle/src/run/default/nrt_inference/YYYY/MM/DD/HH/inference``.
+
+   f. Verify your forecast
+
+   .. code-block:: bash
+      
+      make vx-grid-global config=nrt.yaml
+      make vx-grid-lam config=nrt.yaml
+      make vx-obs-global config=nrt.yaml
+      make vx-obs-lam config=nrt.yaml
+
+   Verification requires completed forecast output, so wait until the inference window has completed before running these commands. 
+   For example, if you created a 48 hour forecast, you will need to wait 48 hours to verify it. Once the output is available, run 
+   the same ``vx`` targets shown above to verify against gridded analyses or observations.

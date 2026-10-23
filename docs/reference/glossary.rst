@@ -7,14 +7,29 @@ Glossary
 .. glossary::
    :sorted:
 
+   AORC
+      Analysis of Record for Calibration. A NOAA gridded meteorological forcing dataset used for land surface and hydrologic applications.
+
    anemoi
       The ECMWF-led machine learning weather prediction software stack used by EAGLE for training and inference. See the `anemoi-core repository <https://github.com/ecmwf/anemoi-core>`__.
+
+   checkpoint
+      A saved snapshot of a trained machine learning model that can be used to resume training or perform inference.
+
+   CONUS
+      Continental United States.
 
    ECMWF
       European Centre for Medium-Range Weather Forecasts.
 
    EAGLE
       Experimental AI Global and Limited-area Ensemble forecast system.
+
+   ERA5
+      The fifth-generation atmospheric reanalysis produced by the European Centre for Medium-Range Weather Forecasts (ECMWF).
+
+   GEFS
+      Global Ensemble Forecast System. NOAA's global ensemble weather prediction system.
 
    GFS
       Global Forecast System. See the `NOAA GFS page <https://www.emc.ncep.noaa.gov/emc/pages/numerical_forecast_systems/gfs.php>`__.
@@ -34,8 +49,20 @@ Glossary
    MPI
       Message Passing Interface. A standard used for parallel computing across multiple processes.
 
-   PreWXVX
-      The EAGLE driver that prepares forecast output for downstream :term:`wxvx` verification steps.
+   MET
+      Model Evaluation Tools. A community-developed verification package used to evaluate numerical weather prediction and machine learning weather forecasts.
+
+   netCDF
+      Network Common Data Form. A file format commonly used for storing and sharing scientific array-based data.
+
+   NRT
+      Near real-time. Refers to workflows that generate forecasts using the latest available input data shortly after it becomes available.
+
+   PrepBUFR
+      A BUFR-formatted observational dataset used for numerical weather prediction and forecast verification.
+
+   prewxvx
+      The component used by EAGLE to prepare forecast output for :term:`wxvx` verification steps.
 
    ufs2arco
       The component used by EAGLE to prepare Zarr-formatted forecast and analysis data. See the `ufs2arco repository <https://github.com/NOAA-PSL/ufs2arco>`__.

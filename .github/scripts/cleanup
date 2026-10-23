@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+# shellcheck disable=2046,2086
+
+set -euo pipefail
+cd $GITHUB_WORKSPACE
+echo Running in $PWD
+test -d conda && mv -v conda conda.$(date +%s)
+git clean -ffdx -e "conda.*"

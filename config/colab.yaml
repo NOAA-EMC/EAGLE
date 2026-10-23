@@ -1,0 +1,136 @@
+# Colab cleanup overlay for feature/global_mini.
+# Intended usage:
+#   uw config compose config/base.yaml \
+#     config/global_mini.yaml config/colab.yaml > eagle.yaml
+
+# yamllint disable rule:anchors rule:line-length
+
+app:
+  base: /content/EAGLE
+  experiment_name: global_mini
+  # Remove launcher so execution commands run directly in the notebook/runtime.
+  launcher: !remove
+  time:
+    inference_start: !datetime 2022-01-02T00
+    max_leadtime: 12
+    start: !datetime 2022-01-01T00
+    stop: !datetime 2022-01-02T18
+  # Placeholder objects retained for schema compatibility.
+  # The anchor is kept because base.yaml aliases *gpu-batchargs.
+  gpu:
+    batchargs: &gpu-batchargs
+      nodes: 1
+      partition: placeholder
+      queue: placeholder
+  partitions:
+    netaccess: placeholder
+  platform:
+    account: placeholder
+    scheduler: slurm
+val:
+  slurm_script: !remove
+  inference:
+    envcmds:
+      - set -ex
+  training:
+    envcmds:
+      - export MLFLOW_ALLOW_FILE_STORE=true
+      - export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+      - set -ex
+  zarrs:
+    envcmds:
+      - set -ex
+ufs2arco:
+  target:
+    statistics_period:
+      end: 2022-01-01T18
+training:
+  execution:
+    batchargs: !remove
+    envcmds:
+      - export MLFLOW_ALLOW_FILE_STORE=true
+      - export SLURM_GPUS_PER_NODE=1
+      - export ANEMOI_BASE_SEED=42
+      - export SLURM_JOB_ID=0
+      - set -ex
+    executable: anemoi-training train --config-name=training
+  anemoi:
+    defaults:
+      - data: zarr
+      - dataloader: native_grid
+      - diagnostics: evaluation
+      - graph: encoder_decoder_only
+      - model: transformer
+      - task: forecaster
+      - training: single
+      - _self_
+    dataloader:
+      num_workers:
+        training: 1
+        validation: 1
+      test:
+        datasets:
+          data:
+            start: 2022-01-03
+            end: 2022-01-03
+      training:
+        datasets:
+          data:
+            start: 2022-01-01
+            end: 2022-01-01
+      validation:
+        datasets:
+          data:
+            start: 2022-01-02
+            end: 2022-01-02
+    diagnostics:
+      checkpoint:
+        every_n_minutes:
+          save_frequency: null
+          num_models_saved: 0
+        every_n_epochs:
+          save_frequency: null
+          num_models_saved: 0
+        every_n_train_steps:
+          save_frequency: 10
+          num_models_saved: 2
+      plot:
+        frequency:
+          batch: 10
+          epoch: 2
+    task:
+      validation_rollout: 1
+      rollout:
+        epoch_increment: 0
+        maximum: 1
+    training:
+      max_steps: 25
+      optimization:
+        lr_scheduler:
+          warmup_t: 5
+          t_initial: 25
+inference:
+  execution:
+    batchargs: !remove
+    envcmds: !list '{{ val.inference.envcmds }}'
+    executable: eagle-tools inference inference.yaml
+zarrs:
+  common:
+    execution:
+      # Schema-compatible placeholder, replacing inherited batch settings.
+      batchargs: !dict '{walltime: "00:10:00"}'
+      envcmds:
+        - set -ex
+      mpiargs:
+        - -n 2
+      mpicmd: mpiexec
+  gfs:
+    zarr:
+      execution:
+        batchargs: !dict '{walltime: "00:10:00"}'
+        envcmds:
+          - set -ex
+        executable: ufs2arco ufs2arco-gfs.yaml --overwrite
+        mpiargs:
+          - -n 2
+        mpicmd: mpiexec

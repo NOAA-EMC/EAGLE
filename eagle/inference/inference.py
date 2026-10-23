@@ -1,0 +1,84 @@
+from pathlib import Path
+
+from anemoi.inference.checkpoint import Checkpoint  # type: ignore[import-untyped]
+from iotaa import Asset, collection, external, task  # provided by uwtools
+from uwtools.api.config import get_yaml_config
+from uwtools.api.driver import DriverTimeInvariant
+
+
+class Inference(DriverTimeInvariant):
+    """
+    Runs anemoi-inference.
+    """
+
+    # Public tasks
+
+    @task
+    def anemoi_config(self):
+        """
+        Anemoi-inference config created with specified checkpoint path.
+        """
+        yield self.taskname("inference config")
+        path = self.rundir / "inference.yaml"
+        yield Asset(path, path.is_file)
+        config = get_yaml_config(self.config["anemoi"])
+        ckpt_dir = self.config.get("checkpoint_dir")
+        ckpt_path = (
+            max(
+                Path(ckpt_dir).glob("*/inference-last.ckpt"),
+                key=lambda p: p.stat().st_mtime,
+            )
+            if ckpt_dir
+            else Path(config["checkpoint_path"])
+        )
+        if self.config.get("validate", True):
+            yield self.valid_checkpoint(ckpt_path)
+        else:
+            yield self._checkpoint(ckpt_path)
+        if ckpt_dir:
+            config["checkpoint_path"] = str(ckpt_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        config.dump(path)
+
+    @collection
+    def provisioned_rundir(self):
+        """
+        Run directory provisioned with all required content.
+        """
+        yield self.taskname("provisioned run directory")
+        yield [
+            self.anemoi_config(),
+            self.runscript(),
+        ]
+
+    @task
+    def valid_checkpoint(self, ckpt_path: Path):
+        """
+        Validate checkpoint compatibility against the current inference environment.
+        """
+        taskname = "Validating checkpoint compatibility %s" % ckpt_path
+        yield taskname
+        valid: list[bool] = []
+        yield Asset(None, lambda: valid == [True])
+        yield self._checkpoint(ckpt_path)
+        valid.append(Checkpoint(str(ckpt_path)).validate_environment() is True)
+
+    # Public methods
+
+    @classmethod
+    def driver_name(cls) -> str:
+        """
+        Provide the name of this driver.
+        """
+        return "inference"
+
+    # Private methods
+
+    @external
+    def _checkpoint(self, path: Path):
+        """
+        Checkpoint exists at the given path.
+        """
+        taskname = "Checkpoint exists %s" % path
+        yield taskname
+        yield Asset(path, path.exists)

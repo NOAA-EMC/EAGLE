@@ -1,8 +1,0 @@
-channels:
-  - nodefaults
-  - conda-forge
-  - oar-gsl
-  - ufs-community
-dependencies:
-  - wxvx 0.7.*
-  - uwtools 2.14.*

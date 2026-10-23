@@ -15,7 +15,7 @@ EAGLE runs (see the Quickstart Guide for an example.) The composed config can th
 edited for experiment-specific requirements.
 
 For advanced use cases, for example for composing configs in arbitrary locations, the underlying :term:`uwtools` 
-command can be used. In the ``src/`` directory:
+command can be used. In the repository root:
 
 .. code-block:: bash
 
@@ -73,6 +73,15 @@ Configuration for the ``Inference`` driver.
 ``checkpoint_dir``
    The ``checkpoint_dir:`` parameter specifies the location of the checkpoints created by the training step.
 
+``anemoi.checkpoint_path``
+   The ``anemoi.checkpoint_path:`` parameter can be set to an explicit checkpoint file, such as the official nested-EAGLE pretrained checkpoint. If ``checkpoint_dir`` is configured, it takes precedence by selecting the latest checkpoint in that directory.
+
+``anemoi.input_dataset_kwargs``
+   The ``anemoi.input_dataset_kwargs:`` block controls the dataset used as input for inference. Update this block when using a different initial-condition dataset.
+
+``validate``
+   The ``validate:`` parameter controls whether the Anemoi checkpoint is validated against the current inference environment. When ``true`` or omitted, the checkpoint is checked for compatibility with the current ``anemoi-inference`` environment. When ``false``, EAGLE only checks that the checkpoint file exists.
+
 platform
 ------------------------------------------------------------------------------
 
@@ -81,13 +90,13 @@ In the EAGLE base config, this ``uwtools``-required parameter delegates to ``app
 prewxvx
 ------------------------------------------------------------------------------
 
-Configuration for the ``PreWXVX`` driver.
+This block provides general configuration parameters for the :term:`prewxvx` component executed by the ``WXVX`` driver.
 
-``component``
-   This driver executes the :ref:`Postprocessing <Postprocessing>` component.
+This configuration is used as a source for default and common configuration parameters, which are supplemented by the
+WXVX driver when it executes ``eagle-tools prewxvx``.
 
 ``global`` and ``lam``
-   The ``global:`` and ``lam:`` blocks provide configurations for global and :term:`LAM` extents, respectively, each borrowing from ``common:``. Their ``prewxvx:`` sub-blocks are ultimately passed to the ``PreWXVX`` driver as its runtime configuration.
+   The ``global:`` and ``lam:`` blocks provide configurations for global and :term:`LAM` extents, respectively, each borrowing from ``common:``. Their ``prewxvx:`` sub-blocks are ultimately passed to the ``WXVX`` driver as the runtime configuration for the ``eagle-tools``' ``prewxvx`` component.
 
 training
 ------------------------------------------------------------------------------
@@ -151,6 +160,11 @@ Configuration for the ``Zarr`` driver.
 ``gfs`` and ``hrrr``
    The ``gfs:`` and ``hrrr:`` sub-blocks provide refinements for ingesting GFS and HRRR data, respectively, for EAGLE.
 
+To ingest a different data source, update or add a ``zarrs.<source>`` block with
+the source, transforms, and target settings needed by ``ufs2arco``. Downstream
+training and inference dataset paths must be updated to point to the resulting
+Zarr output.
+
 .. _ConfigRealization:
 
 Config Realization
@@ -170,6 +184,14 @@ out using Jinja2.
 
 Note that the realized config may still contain some Jinja2 expressions that can only be realized at run time by the 
 component using a particular config block.
+
+It is also possible to update a config while realizing it. To do so, create a YAML file (e.g. ``updates.yaml``) defining the required updates; see the ``uwtools`` documentation for `an example <https://uwtools.readthedocs.io/en/stable/sections/user_guide/cli/tools/config.html#id2>`_ and run:
+
+.. code-block:: bash
+
+    make realize config=eagle.yaml update=updates.yaml
+
+The updates are applied first, then Jinja2 content is realized.
 
 .. _ConfigValidation:
 

@@ -16,8 +16,13 @@ To learn about EAGLE and how to use the provided workflows, please see our [docu
 ## Collaboration
 
 - If you encounter a problem using EAGLE that appears to be a bug, please open an [issue](https://github.com/NOAA-EPIC/EAGLE/issues) with us.
+- For enhancement requests, please start an [Enhancement Discussion](https://github.com/NOAA-EPIC/EAGLE/discussions/new?category=enhancement-discussion).
 - For free-form sharing of ideas, questions, tips and tricks, etc., please start or join a [discussion](https://github.com/NOAA-EPIC/EAGLE/discussions).
 - To contribute to the codebase, please see our [docs](https://epic-eagle.readthedocs.io/en/latest/contributing.html).
+
+## Citation
+
+The Earth Prediction Innovation Center (EPIC) and the NOAA AI for Numerical Weather Prediction (AI4NWP) Working Group. (2026). The nested-EAGLE (Experimental AI Global and Limited-area Ensemble forecast system) (v1.1.0). Zenodo. https://doi.org/10.5281/zenodo.19672026
 
 ## Acknowledgments
 
@@ -31,7 +36,7 @@ Anemoi: European Centre for Medium-Range Weather Forecasts
 - Documentation: [anemoi-models](https://anemoi.readthedocs.io/projects/models/en/latest/index.html), [anemoi-graphs](https://anemoi.readthedocs.io/projects/graphs/en/latest/), [anemoi-training](https://anemoi.readthedocs.io/projects/training/en/latest/), [anemoi-inference](https://anemoi.readthedocs.io/projects/inference/en/latest/)
 
 wxvx: Paul Madden (NOAA Global Systems Laboratory/Cooperative Institute for Research In Environmental Sciences)
-- [Github](https://github.com/maddenp-cu/wxvx)
+- [Github](https://github.com/NOAA-GSL/wxvx)
 
 eagle-tools: Tim Smith (NOAA Physical Sciences Laboratory)
 - [Github](https://github.com/NOAA-PSL/eagle-tools)

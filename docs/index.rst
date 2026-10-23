@@ -34,7 +34,6 @@ Table of Contents
    ml_pipeline_overview/data_creation
    ml_pipeline_overview/train_a_model
    ml_pipeline_overview/inference
-   ml_pipeline_overview/postprocessing
    ml_pipeline_overview/verification
 
 .. toctree::
@@ -43,6 +42,7 @@ Table of Contents
 
    eagle_models/nested_eagle
    eagle_models/global_eagle
+   eagle_models/global_mini
 
 .. toctree::
    :maxdepth: 1

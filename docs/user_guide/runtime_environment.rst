@@ -15,7 +15,7 @@ To build the EAGLE runtime virtual environments:
 
 This will install :term:`Miniforge conda` in the current directory and create the various virtual environments.
 
-The value of the ``cudascript=`` argument should be either the name of a file under ``src/cuda/`` (e.g. ``cudascript=ursa``), 
+The value of the ``cudascript=`` argument should be either the name of a file under ``cuda/`` (e.g. ``cudascript=ursa``), 
 or an arbitrary path to a file (e.g. ``cudascript=/path/to/file``). The file should contain a list of commands that need 
 to be executed on the current system to make the CUDA ``nvcc`` program available on ``PATH``. The ``setup`` script uses ``nvcc`` 
 to determine the CUDA release number, used to select a matching ``flash-attn`` package. For systems needing no special 
@@ -55,34 +55,26 @@ Run ``make`` with no arguments to list available targets.
    * - training
      - Performs anemoi training
      - data
-     - training
+     - anemoi
    * - inference
      - Performs anemoi inference
      - training
-     - inference
-   * - prewxvx-global
-     - Postprocesses global inference output
-     - inference
-     - prewxvx
-   * - prewxvx-lam
-     - Postprocesses LAM inference output
-     - inference
-     - prewxvx
+     - anemoi
    * - vx-grid-global
      - Verify global against gridded analysis
-     - prewxvx-global
+     - inference
      - wxvx
    * - vx-grid-lam
      - Verify LAM against gridded analysis
-     - prewxvx-lam
+     - inference
      - wxvx
    * - vx-obs-global
      - Verify global against obs
-     - prewxvx-global
+     - inference
      - wxvx
    * - vx-obs-lam
      - Verify LAM against obs
-     - prewxvx-lam
+     - inference
      - wxvx
    * - vis-grid-global
      - Visualize global VX results against gridded analysis
